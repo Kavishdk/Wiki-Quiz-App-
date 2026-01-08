@@ -1,0 +1,129 @@
+{
+    "id": 1,
+    "url": "https://en.wikipedia.org/wiki/Alan_Turing",
+    "title": "Alan Turing",
+    "summary": "Alan Mathison Turing OBE FRS was an English mathematician, computer scientist, logician, cryptanalyst, philosopher and theoretical biologist. Turing was highly influential in the development of theoretical computer science, providing a formalisation of the concepts of algorithm and computation with the Turing machine, which can be considered a model of a general-purpose computer. He is widely considered to be the father of theoretical computer science and artificial intelligence.",
+    "key_entities": {
+        "people": [
+            "Alan Turing",
+            "Alonzo Church",
+            "Christopher Morcom",
+            "Joan Clarke"
+        ],
+        "organizations": [
+            "University of Cambridge",
+            "Princeton University",
+            "Bletchley Park",
+            "National Physical Laboratory"
+        ],
+        "locations": [
+            "United Kingdom",
+            "London",
+            "Manchester",
+            "Bletchley"
+        ]
+    },
+    "sections": [
+        "Early life and education",
+        "Career and research",
+        "Cryptanalysis",
+        "Pattern formation and mathematical biology",
+        "Persecution for homosexuality",
+        "Death",
+        "Recognition and tributes",
+        "Legacy"
+    ],
+    "quiz": [
+        {
+            "question": "Where did Alan Turing receive his undergraduate education?",
+            "options": [
+                "Harvard University",
+                "University of Cambridge",
+                "Oxford University",
+                "Princeton University"
+            ],
+            "answer": "University of Cambridge",
+            "difficulty": "easy",
+            "explanation": "Alan Turing studied at King's College, Cambridge, where he graduated with distinction in mathematics."
+        },
+        {
+            "question": "What was Alan Turing's main contribution during World War II?",
+            "options": [
+                "Atomic bomb research",
+                "Breaking the Enigma code",
+                "Developing radar technology",
+                "Designing jet engines"
+            ],
+            "answer": "Breaking the Enigma code",
+            "difficulty": "medium",
+            "explanation": "Turing worked at Bletchley Park during WWII, where he played a crucial role in breaking German ciphers, particularly the Enigma machine."
+        },
+        {
+            "question": "What theoretical concept is Alan Turing most famous for in computer science?",
+            "options": [
+                "Binary code",
+                "The Turing machine",
+                "Object-oriented programming",
+                "Cloud computing"
+            ],
+            "answer": "The Turing machine",
+            "difficulty": "medium",
+            "explanation": "The Turing machine is a mathematical model of computation that defines an abstract machine, which is fundamental to theoretical computer science."
+        },
+        {
+            "question": "What test did Turing propose to evaluate machine intelligence?",
+            "options": [
+                "The Intelligence Quotient Test",
+                "The Turing Test",
+                "The Logic Test",
+                "The Computation Test"
+            ],
+            "answer": "The Turing Test",
+            "difficulty": "easy",
+            "explanation": "The Turing Test, proposed in his 1950 paper 'Computing Machinery and Intelligence,' evaluates a machine's ability to exhibit intelligent behavior equivalent to human intelligence."
+        },
+        {
+            "question": "Why was Alan Turing prosecuted in 1952?",
+            "options": [
+                "Espionage",
+                "Treason",
+                "Homosexual acts",
+                "Tax evasion"
+            ],
+            "answer": "Homosexual acts",
+            "difficulty": "medium",
+            "explanation": "Turing was prosecuted for homosexual acts, which were illegal in the UK at the time, and was given a choice between imprisonment and chemical castration."
+        },
+        {
+            "question": "At what age did Alan Turing die?",
+            "options": [
+                "39",
+                "41",
+                "45",
+                "52"
+            ],
+            "answer": "41",
+            "difficulty": "hard",
+            "explanation": "Alan Turing died on June 7, 1954, at the age of 41, in what was ruled as suicide by cyanide poisoning."
+        },
+        {
+            "question": "Which university did Turing attend for his Ph.D.?",
+            "options": [
+                "Cambridge University",
+                "Oxford University",
+                "Princeton University",
+                "MIT"
+            ],
+            "answer": "Princeton University",
+            "difficulty": "hard",
+            "explanation": "Turing completed his Ph.D. at Princeton University under the supervision of Alonzo Church, where he studied mathematical logic."
+        }
+    ],
+    "related_topics": [
+        "Enigma machine",
+        "Bletchley Park",
+        "Turing test",
+        "Computability theory",
+        "History of computer science"
+    ]
+}
