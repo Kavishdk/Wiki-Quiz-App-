@@ -1,6 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
-import { fetchWikipediaContent, isValidWikiUrl } from '../utils/scraper';
+import { previewURL } from '../services/api';
+
+// Quick check for valid Wikipedia URLs
+const isValidWikiUrl = (url: string): boolean => {
+  return /^https?:\/\/(en\.)?wikipedia\.org\/wiki\/[^:]+$/.test(url);
+};
 
 interface URLPreviewProps {
   url: string;
@@ -17,8 +22,8 @@ const URLPreview: React.FC<URLPreviewProps> = ({ url, onValidated }) => {
       const fetchTitle = async () => {
         setLoading(true);
         try {
-          // Quick fetch to just get the title
-          const data = await fetchWikipediaContent(url);
+          // Use our backend API to just get the title
+          const data = await previewURL(url);
           if (active) {
             setTitle(data.title);
             onValidated(data.title);
@@ -29,7 +34,7 @@ const URLPreview: React.FC<URLPreviewProps> = ({ url, onValidated }) => {
           if (active) setLoading(false);
         }
       };
-      
+
       const timeout = setTimeout(fetchTitle, 500);
       return () => {
         active = false;

@@ -13,16 +13,7 @@ const Header: React.FC = () => {
             WikiQuiz AI
           </h1>
         </div>
-        <div className="hidden md:flex items-center space-x-4 text-sm font-medium text-slate-500">
-          <span className="flex items-center">
-            <i className="fas fa-check-circle text-green-500 mr-2"></i>
-            Accurate Extraction
-          </span>
-          <span className="flex items-center">
-            <i className="fas fa-bolt text-yellow-500 mr-2"></i>
-            Instant Quizzes
-          </span>
-        </div>
+
       </div>
     </header>
   );

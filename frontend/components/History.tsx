@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { WikiData } from '../types';
 import { getQuizHistory, getQuizById, deleteQuiz, QuizHistoryItem } from '../services/api';
 import QuizModal from './QuizModal';
+import { useToast } from './ToastContext';
 
 interface HistoryProps {
   refreshTrigger?: number; // Used to refresh when new quiz is generated
@@ -14,6 +15,7 @@ const History: React.FC<HistoryProps> = ({ refreshTrigger }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedQuiz, setSelectedQuiz] = useState<WikiData | null>(null);
   const [loadingQuizId, setLoadingQuizId] = useState<number | null>(null);
+  const { showToast } = useToast();
 
   // Fetch history from the backend
   useEffect(() => {
@@ -26,13 +28,14 @@ const History: React.FC<HistoryProps> = ({ refreshTrigger }) => {
       } catch (err: any) {
         console.error('Error fetching history:', err);
         setError(err.message || 'Failed to load history');
+        showToast('Failed to load history: ' + (err.message || 'Unknown error'), 'error');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchHistory();
-  }, [refreshTrigger]); // Re-fetch when this changes
+  }, [refreshTrigger, showToast]); // Re-fetch when this changes
 
   const handleViewDetails = async (id: number) => {
     try {
@@ -41,7 +44,7 @@ const History: React.FC<HistoryProps> = ({ refreshTrigger }) => {
       setSelectedQuiz(quizData);
     } catch (err: any) {
       console.error('Error fetching quiz details:', err);
-      alert('Failed to load quiz details: ' + err.message);
+      showToast('Failed to load quiz details: ' + err.message, 'error');
     } finally {
       setLoadingQuizId(null);
     }
@@ -55,9 +58,10 @@ const History: React.FC<HistoryProps> = ({ refreshTrigger }) => {
     try {
       await deleteQuiz(id);
       setHistory(history.filter(item => item.id !== id));
+      showToast('Quiz deleted successfully', 'success');
     } catch (err: any) {
       console.error('Error deleting quiz:', err);
-      alert('Failed to delete quiz: ' + err.message);
+      showToast('Failed to delete quiz: ' + err.message, 'error');
     }
   };
 

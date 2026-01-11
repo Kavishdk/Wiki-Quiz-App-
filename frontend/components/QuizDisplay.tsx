@@ -31,17 +31,17 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({ data }) => {
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-3xl font-bold leading-tight">{data.title}</h2>
-            <a 
-              href={data.url} 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href={data.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-blue-100 text-sm hover:underline flex items-center mt-1"
             >
               <i className="fas fa-external-link-alt mr-2"></i>
               Source: Wikipedia
             </a>
           </div>
-          <button 
+          <button
             onClick={() => setMode('take')}
             className="bg-white text-blue-700 px-8 py-3 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-lg hover:scale-105 active:scale-95 flex items-center"
           >
@@ -49,7 +49,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({ data }) => {
             Take Quiz
           </button>
         </div>
-        
+
         <div className="p-6 md:p-8">
           <div className="mb-8">
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Executive Summary</h3>
@@ -62,8 +62,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({ data }) => {
                 <i className="fas fa-users text-blue-500 mr-2"></i> People
               </h4>
               <div className="flex flex-wrap gap-2">
-                {/* Ensure the array is treated as string[] for type safety */}
-                {(data.key_entities.people as string[]).map((p, i) => (
+                {(data.key_entities?.people || []).map((p: string, i: number) => (
                   <span key={i} className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-sm">{p}</span>
                 ))}
               </div>
@@ -73,8 +72,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({ data }) => {
                 <i className="fas fa-building text-indigo-500 mr-2"></i> Orgs
               </h4>
               <div className="flex flex-wrap gap-2">
-                {/* Ensure the array is treated as string[] for type safety */}
-                {(data.key_entities.organizations as string[]).map((o, i) => (
+                {(data.key_entities?.organizations || []).map((o: string, i: number) => (
                   <span key={i} className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-sm">{o}</span>
                 ))}
               </div>
@@ -84,8 +82,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({ data }) => {
                 <i className="fas fa-map-marker-alt text-red-500 mr-2"></i> Places
               </h4>
               <div className="flex flex-wrap gap-2">
-                {/* Fixed error: cast to string[] to resolve 'Property map does not exist on type unknown' */}
-                {(data.key_entities.locations as string[]).map((l, i) => (
+                {(data.key_entities?.locations || []).map((l: string, i: number) => (
                   <span key={i} className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-sm">{l}</span>
                 ))}
               </div>
@@ -111,23 +108,20 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({ data }) => {
                     <span className="bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
                       Section Question
                     </span>
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${
-                      q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                      q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                        q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                      }`}>
                       {q.difficulty}
                     </span>
                   </div>
                   <p className="text-lg font-bold text-slate-800 mb-4 leading-tight">{q.question}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                     {q.options.map((opt, i) => (
-                      <div key={i} className={`p-4 rounded-2xl border-2 text-sm font-bold flex items-center ${
-                        opt === q.answer ? 'bg-green-50 border-green-200 text-green-800' : 'bg-slate-50 border-slate-100 text-slate-500'
-                      }`}>
-                        <span className={`w-7 h-7 flex items-center justify-center rounded-lg mr-3 text-xs ${
-                          opt === q.answer ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-400'
+                      <div key={i} className={`p-4 rounded-2xl border-2 text-sm font-bold flex items-center ${opt === q.answer ? 'bg-green-50 border-green-200 text-green-800' : 'bg-slate-50 border-slate-100 text-slate-500'
                         }`}>
+                        <span className={`w-7 h-7 flex items-center justify-center rounded-lg mr-3 text-xs ${opt === q.answer ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-400'
+                          }`}>
                           {String.fromCharCode(65 + i)}
                         </span>
                         {opt}
@@ -154,8 +148,8 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({ data }) => {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {data.related_topics.map((topic, i) => (
-            <a 
-              key={i} 
+            <a
+              key={i}
               href={`https://en.wikipedia.org/wiki/${topic.replace(/\s+/g, '_')}`}
               target="_blank"
               rel="noopener noreferrer"

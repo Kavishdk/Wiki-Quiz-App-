@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { generateQuiz, QuizData } from '../services/api';
 import QuizDisplay from './QuizDisplay';
 import URLPreview from './URLPreview';
+import { useToast } from './ToastContext';
 
 interface QuizGeneratorProps {
   onQuizGenerated: (data: QuizData) => void;
@@ -16,21 +17,20 @@ const isValidWikiUrl = (url: string): boolean => {
 const QuizGenerator: React.FC<QuizGeneratorProps> = ({ onQuizGenerated }) => {
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<QuizData | null>(null);
   const [validatedTitle, setValidatedTitle] = useState('');
+  const { showToast } = useToast();
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Make sure they gave us a valid URL
     if (!isValidWikiUrl(url)) {
-      setError('Please enter a valid Wikipedia article URL');
+      showToast('Please enter a valid Wikipedia article URL (e.g., https://en.wikipedia.org/wiki/React)', 'error');
       return;
     }
 
     setIsLoading(true);
-    setError(null);
     setResult(null);
 
     try {
@@ -40,9 +40,12 @@ const QuizGenerator: React.FC<QuizGeneratorProps> = ({ onQuizGenerated }) => {
       setResult(generated);
       setValidatedTitle(generated.title);
       onQuizGenerated(generated);
+      showToast('Quiz generated successfully!', 'success');
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Something went wrong while generating the quiz.');
+      const errorMessage = err.message || 'Something went wrong while generating the quiz.';
+      showToast(errorMessage, 'error');
+      // We don't specific local error state anymore, using toast instead
     } finally {
       setIsLoading(false);
     }
@@ -86,13 +89,6 @@ const QuizGenerator: React.FC<QuizGeneratorProps> = ({ onQuizGenerated }) => {
 
           <URLPreview url={url} onValidated={setValidatedTitle} />
         </form>
-
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 flex items-start">
-            <i className="fas fa-exclamation-circle mt-1 mr-3"></i>
-            <p className="text-sm font-medium">{error}</p>
-          </div>
-        )}
       </div>
 
       {isLoading && (

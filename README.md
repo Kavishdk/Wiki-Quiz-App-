@@ -112,10 +112,10 @@ Check out `PROMPT_TEMPLATES.md` for the full prompt engineering details.
 
 ```
 ├── backend/          # Python FastAPI backend
-├── components/       # React components
-├── services/         # API client
+├── frontend/         # React frontend application
+├── screenshots/      # Verified UI screenshots
 ├── sample_data/      # Test URLs and example output
-└── docs/            # Setup and deployment guides
+└── docs/             # Setup and deployment guides
 ```
 
 ## Sample Data

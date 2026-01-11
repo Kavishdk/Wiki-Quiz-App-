@@ -7,6 +7,7 @@ export interface QuizQuestion {
   answer: string;
   difficulty: Difficulty;
   explanation: string;
+  section?: string;
 }
 
 export interface KeyEntities {

@@ -11,6 +11,7 @@ export interface QuizQuestion {
   answer: string;
   difficulty: 'easy' | 'medium' | 'hard';
   explanation: string;
+  section?: string;
 }
 
 export interface KeyEntities {

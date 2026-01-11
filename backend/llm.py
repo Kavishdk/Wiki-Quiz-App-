@@ -19,6 +19,7 @@ class QuizQuestionOutput(BaseModel):
     answer: str = Field(description="The correct answer (must be one of the options)")
     difficulty: str = Field(description="Difficulty level: easy, medium, or hard")
     explanation: str = Field(description="Brief explanation of the answer")
+    section: str = Field(description="The Wikipedia section heading this question is from")
 
 
 class QuizOutput(BaseModel):
@@ -43,10 +44,12 @@ class QuizGenerator:
     def __init__(self):
         # Setup Gemini - using lower temperature for more factual responses
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             google_api_key=settings.GEMINI_API_KEY,
-            temperature=0.3,  # keeping it low so we don't get creative with facts
-            max_output_tokens=4096
+            temperature=0.1,
+            max_output_tokens=4096,
+            timeout=60,
+            model_kwargs={"response_mime_type": "application/json"}
         )
         
         # These parsers help us get structured JSON back
@@ -103,6 +106,7 @@ QUIZ QUESTIONS (7-10 questions):
 - Each question must have exactly 4 options
 - The correct answer must be one of the 4 options
 - Provide a brief explanation citing the relevant section
+- Assign the most relevant section title from the article to the 'section' field
 
 RELATED TOPICS (exactly 5):
 - Suggest 5 related Wikipedia topics for further reading
@@ -141,11 +145,16 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
             if not response_text:
                 raise ValueError("LLM returned empty content")
             
+            # Log the raw response for debugging
+            print(f"Raw LLM Response (first 500 chars): {response_text[:500]}")
+            
             # Clean up any markdown formatting
             if response_text.startswith("```json"):
                 response_text = response_text[7:-3].strip()
             elif response_text.startswith("```"):
                 response_text = response_text[3:-3].strip()
+            
+            print(f"Cleaned response (first 500 chars): {response_text[:500]}")
             
             quiz_output = json.loads(response_text)
             
@@ -154,7 +163,7 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
                 raise ValueError("LLM response is not a valid JSON object")
             
             if 'quiz' not in quiz_output:
-                raise ValueError("LLM response missing 'quiz' field")
+                raise ValueError(f"LLM response missing 'quiz' field. Got keys: {list(quiz_output.keys())}")
             
             if not isinstance(quiz_output['quiz'], list):
                 raise ValueError("'quiz' field must be a list")
@@ -170,10 +179,10 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
                 required_fields = ['question', 'options', 'answer', 'difficulty', 'explanation']
                 for field in required_fields:
                     if field not in q:
-                        raise ValueError(f"Question {i+1} missing required field: {field}")
+                        raise ValueError(f"Question {i+1} missing required field: {field}. Has: {list(q.keys())}")
                 
                 if not isinstance(q['options'], list) or len(q['options']) != 4:
-                    raise ValueError(f"Question {i+1} must have exactly 4 options")
+                    raise ValueError(f"Question {i+1} must have exactly 4 options, got {len(q.get('options', []))}")
                 
                 if q['answer'] not in q['options']:
                     raise ValueError(f"Question {i+1}: answer must be one of the options")
@@ -190,9 +199,11 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
             
         except json.JSONDecodeError as e:
             print(f"JSON parsing error: {e}")
-            print(f"Got this response: {response.content[:500]}...")
+            print(f"Got this response: {response.content[:1000]}")
             raise ValueError(f"Failed to parse LLM response as JSON: {str(e)}")
-        except ValueError:
+        except ValueError as e:
+            print(f"Validation error: {e}")
+            print(f"Response content: {response.content[:1000]}")
             raise
         except Exception as e:
             print(f"Uh oh, parsing error: {e}")

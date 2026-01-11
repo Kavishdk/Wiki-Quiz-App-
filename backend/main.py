@@ -45,6 +45,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
 # Setup CORS so frontend can talk to us
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +54,59 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# --- Global Error Handlers ---
+
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    """Handle invalid data sent to API"""
+    logger.error(f"Validation error: {exc}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=ErrorResponse(
+            detail=f"Invalid data provided: {exc}",
+            timestamp=None  # We could add timestamp if needed
+        ).model_dump(exclude_none=True),
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+    """Handle standard HTTP exceptions with consistent format"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            detail=str(exc.detail),
+            timestamp=None
+        ).model_dump(exclude_none=True),
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Catch-all for any unhandled server errors"""
+    logger.error(f"Global exception: {exc}")
+    logger.error(traceback.format_exc())
+    
+    # Specific message for Google API rate limits if they bubble up
+    if "ResourceExhausted" in str(exc) or "429" in str(exc):
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content=ErrorResponse(
+                detail="AI service is busy (Quota Exceeded). Please try again in a few minutes."
+            ).model_dump(exclude_none=True),
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=ErrorResponse(
+            detail="An unexpected server error occurred."
+        ).model_dump(exclude_none=True),
+    )
+
 
 
 @app.get("/")

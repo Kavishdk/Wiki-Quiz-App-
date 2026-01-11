@@ -109,13 +109,28 @@ class WikipediaScraper:
     
     def _extract_title(self, soup: BeautifulSoup) -> str:
         """Get the article title"""
-        title_tag = soup.find('h1', class_='firstHeading')
+        title_tag = soup.find('h1', id='firstHeading')
+        if not title_tag:
+            title_tag = soup.find('h1', class_='firstHeading')
         if not title_tag:
             title_tag = soup.find('h1')
         
         if title_tag:
             return title_tag.get_text().strip()
         return "Unknown Title"
+
+    def _get_content_wrapper(self, soup: BeautifulSoup) -> Optional[BeautifulSoup]:
+        """
+        Find the main content wrapper.
+        Usually it's the div with class 'mw-parser-output' that contains the most paragraphs.
+        """
+        candidates = soup.find_all('div', class_='mw-parser-output')
+        if not candidates:
+            # Fallback to mw-content-text which is the outer container
+            return soup.find('div', id='mw-content-text')
+        
+        # Pick the one with the most paragraphs - this avoids small meta boxes
+        return max(candidates, key=lambda d: len(d.find_all('p')))
     
     def _extract_summary(self, soup: BeautifulSoup) -> str:
         """
@@ -125,7 +140,7 @@ class WikipediaScraper:
         paragraphs = []
         
         # Find the main content area
-        content = soup.find('div', class_='mw-parser-output')
+        content = self._get_content_wrapper(soup)
         if not content:
             return ""
         
@@ -139,25 +154,31 @@ class WikipediaScraper:
                     # Usually 3-5 paragraphs is enough for a good summary
                     if len(paragraphs) >= 5:
                         break
-            elif element.name in ['h2', 'div'] and element.get('id') == 'toc':
+            elif element.name in ['h2', 'div'] and (element.get('id') == 'toc' or 'toc' in (element.get('class') or [])):
                 # Stop when we hit the first section or TOC
                 break
         
         return ' '.join(paragraphs)
     
     def _extract_sections(self, soup: BeautifulSoup) -> List[str]:
-        """Pull out all the section headings"""
+        """Pull out all the section headings from the main content"""
         sections = []
-        
+        content = self._get_content_wrapper(soup)
+        if not content:
+            return []
+            
         # Look for h2 tags - those are the main sections
-        for heading in soup.find_all('h2'):
+        for heading in content.find_all('h2'):
             span = heading.find('span', class_='mw-headline')
             if span:
                 section_text = span.get_text().strip()
-                # Skip the boring meta sections
-                if section_text not in ['Contents', 'References', 'External links', 
-                                       'Notes', 'See also', 'Further reading']:
-                    sections.append(section_text)
+            else:
+                section_text = heading.get_text().strip()
+                
+            # Skip the boring meta sections
+            if section_text and section_text not in ['Contents', 'References', 'External links', 
+                                                   'Notes', 'See also', 'Further reading']:
+                sections.append(section_text)
         
         return sections
     
@@ -166,7 +187,7 @@ class WikipediaScraper:
         Get all the text from the article.
         We clean out references, tables, and navigation stuff.
         """
-        content = soup.find('div', class_='mw-parser-output')
+        content = self._get_content_wrapper(soup)
         if not content:
             return ""
         

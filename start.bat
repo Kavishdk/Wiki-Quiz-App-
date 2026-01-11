@@ -68,6 +68,7 @@ cd ..
 
 echo.
 echo [3/5] Setting up frontend...
+cd frontend
 if not exist "node_modules" (
     echo Installing Node.js dependencies...
     call npm install
@@ -80,6 +81,7 @@ if not exist ".env.local" (
     echo Creating .env.local from .env.example...
     copy .env.example .env.local
 )
+cd ..
 
 echo.
 echo [4/5] Setup complete!
@@ -105,7 +107,7 @@ REM Wait a moment for backend to start
 timeout /t 3 /nobreak >nul
 
 REM Start frontend in new window
-start "WikiQuiz Frontend" cmd /k "npm run dev"
+start "WikiQuiz Frontend" cmd /k "cd frontend && npm run dev"
 
 echo.
 echo ========================================

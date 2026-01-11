@@ -13,6 +13,7 @@ class QuizQuestion(BaseModel):
     answer: str
     difficulty: str = Field(..., pattern="^(easy|medium|hard)$")
     explanation: str
+    section: Optional[str] = "General"
 
 
 class KeyEntities(BaseModel):
