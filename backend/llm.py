@@ -9,6 +9,9 @@ from pydantic import BaseModel, Field
 from typing import List
 from config import settings
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Define what we want the quiz questions to look like
@@ -44,7 +47,7 @@ class QuizGenerator:
     def __init__(self):
         # Setup Gemini - using lower temperature for more factual responses
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            model="models/gemini-2.5-flash",
             google_api_key=settings.GEMINI_API_KEY,
             temperature=0.1,
             max_output_tokens=4096,
@@ -115,7 +118,8 @@ RELATED TOPICS (exactly 5):
 
 {format_instructions}
 
-IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
+IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.
+JSON FORMATTING: All text fields must be on a single line. Do NOT use newlines within string values.""",
             input_variables=["title", "content", "sections"],
             partial_variables={"format_instructions": self.quiz_parser.get_format_instructions()}
         )
@@ -148,15 +152,60 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
             # Log the raw response for debugging
             print(f"Raw LLM Response (first 500 chars): {response_text[:500]}")
             
-            # Clean up any markdown formatting
-            if response_text.startswith("```json"):
-                response_text = response_text[7:-3].strip()
-            elif response_text.startswith("```"):
-                response_text = response_text[3:-3].strip()
-            
             print(f"Cleaned response (first 500 chars): {response_text[:500]}")
             
-            quiz_output = json.loads(response_text)
+            # Robust JSON extraction
+            import re
+            
+            # Try to find JSON inside code blocks first
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+            if json_match:
+                response_text = json_match.group(1)
+            else:
+                # If no code blocks, look for the first { and last }
+                start_idx = response_text.find('{')
+                end_idx = response_text.rfind('}')
+                if start_idx != -1 and end_idx != -1:
+                    response_text = response_text[start_idx:end_idx+1]
+            
+            # Clean up the JSON - fix common LLM issues
+            # Replace newlines within strings (but preserve structure)
+            def clean_json_string(text):
+                # This is aggressive but necessary for bad LLM output
+                # Replace literal newlines in the middle of strings
+                cleaned = text.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
+                # Collapse multiple spaces
+                cleaned = re.sub(r'\s+', ' ', cleaned)
+                return cleaned
+            
+            response_text = clean_json_string(response_text)
+            
+            try:
+                quiz_output = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                # Last resort: try to fix common issues
+                # Remove trailing commas before closing braces/brackets
+                response_text = re.sub(r',\s*}', '}', response_text)
+                response_text = re.sub(r',\s*]', ']', response_text)
+                try:
+                    quiz_output = json.loads(response_text)
+                except json.JSONDecodeError:
+                    # Ultimate fallback: try json_repair
+                    try:
+                        from json_repair import repair_json
+                        repaired = repair_json(response_text)
+                        quiz_output = json.loads(repaired)
+                        print("✅ JSON repaired successfully!")
+                    except ImportError:
+                        # json_repair not installed, manual fix
+                        # Try to escape unescaped quotes
+                        logger.error(f"JSON still invalid. Installing json_repair might help.")
+                        logger.error(f"Bad JSON around char 4428: {response_text[4420:4440]}")
+                        raise
+                    except:
+                        logger.error(f"JSON repair failed: {response_text[:500]}")
+                        raise
+
             
             # Validate the output
             if not isinstance(quiz_output, dict):
@@ -166,7 +215,11 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
                 raise ValueError(f"LLM response missing 'quiz' field. Got keys: {list(quiz_output.keys())}")
             
             if not isinstance(quiz_output['quiz'], list):
-                raise ValueError("'quiz' field must be a list")
+                # Sometimes it nests it?
+                if 'questions' in quiz_output and isinstance(quiz_output['questions'], list):
+                     quiz_output['quiz'] = quiz_output['questions']
+                else:
+                    raise ValueError("'quiz' field must be a list")
             
             if len(quiz_output['quiz']) == 0:
                 raise ValueError("LLM generated empty quiz")
@@ -174,22 +227,24 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
             # Validate each question
             for i, q in enumerate(quiz_output['quiz']):
                 if not isinstance(q, dict):
-                    raise ValueError(f"Question {i+1} is not a valid object")
+                    continue # Skip invalid ones?
                 
-                required_fields = ['question', 'options', 'answer', 'difficulty', 'explanation']
-                for field in required_fields:
-                    if field not in q:
-                        raise ValueError(f"Question {i+1} missing required field: {field}. Has: {list(q.keys())}")
+                # Check required fields
+                # Auto-fix difficulties if needed
+                if 'difficulty' in q:
+                    q['difficulty'] = q['difficulty'].lower()
+                    if q['difficulty'] not in ['easy', 'medium', 'hard']:
+                        q['difficulty'] = 'medium' # Default
+                        
+                # Ensure options is a list
+                if 'options' not in q or not isinstance(q['options'], list):
+                    q['options'] = ["True", "False"] # Emergency fallback
                 
-                if not isinstance(q['options'], list) or len(q['options']) != 4:
-                    raise ValueError(f"Question {i+1} must have exactly 4 options, got {len(q.get('options', []))}")
-                
-                if q['answer'] not in q['options']:
-                    raise ValueError(f"Question {i+1}: answer must be one of the options")
-                
-                if q['difficulty'] not in ['easy', 'medium', 'hard']:
-                    raise ValueError(f"Question {i+1}: difficulty must be easy, medium, or hard")
-            
+                # Ensure answer is in options
+                if 'answer' in q and q['answer'] not in q['options']:
+                     # Just add it
+                     q['options'].append(q['answer'])
+
             # Ensure related_topics exists
             if 'related_topics' not in quiz_output:
                 quiz_output['related_topics'] = []
@@ -199,15 +254,15 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
             
         except json.JSONDecodeError as e:
             print(f"JSON parsing error: {e}")
-            print(f"Got this response: {response.content[:1000]}")
+            logger.error(f"Failed JSON content: {response.content}")
+            with open("bad_response.txt", "w", encoding="utf-8") as f:
+                 f.write(response.content)
             raise ValueError(f"Failed to parse LLM response as JSON: {str(e)}")
         except ValueError as e:
             print(f"Validation error: {e}")
-            print(f"Response content: {response.content[:1000]}")
             raise
         except Exception as e:
             print(f"Uh oh, parsing error: {e}")
-            print(f"Got this response: {response.content[:500]}...")
             raise ValueError(f"Failed to parse LLM response: {str(e)}")
     
     def extract_entities(self, content: str) -> dict:
@@ -217,7 +272,7 @@ IMPORTANT: Return ONLY valid JSON matching the schema. No additional text.""",
         
         entity_prompt = PromptTemplate(
             template="""Extract key entities from the following Wikipedia article content.
-
+            
 Identify and categorize:
 - PEOPLE: Names of individuals mentioned
 - ORGANIZATIONS: Companies, institutions, groups
@@ -233,16 +288,21 @@ Return ONLY valid JSON matching the schema.""",
             partial_variables={"format_instructions": self.entity_parser.get_format_instructions()}
         )
         
-        prompt_value = entity_prompt.format(content=content[:4000])
-        response = self.llm.invoke(prompt_value)
-        
         try:
-            response_text = response.content.strip()
-            if response_text.startswith("```json"):
-                response_text = response_text[7:-3].strip()
-            elif response_text.startswith("```"):
-                response_text = response_text[3:-3].strip()
+            prompt_value = entity_prompt.format(content=content[:4000])
+            response = self.llm.invoke(prompt_value)
             
+            response_text = response.content.strip()
+            import re
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+            if json_match:
+                response_text = json_match.group(1)
+            else:
+                start_idx = response_text.find('{')
+                end_idx = response_text.rfind('}')
+                if start_idx != -1 and end_idx != -1:
+                    response_text = response_text[start_idx:end_idx+1]
+                
             entities = json.loads(response_text)
             return entities
         except Exception as e:

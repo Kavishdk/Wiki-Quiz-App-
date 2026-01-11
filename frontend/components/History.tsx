@@ -16,6 +16,7 @@ const History: React.FC<HistoryProps> = ({ refreshTrigger }) => {
   const [selectedQuiz, setSelectedQuiz] = useState<WikiData | null>(null);
   const [loadingQuizId, setLoadingQuizId] = useState<number | null>(null);
   const { showToast } = useToast();
+  const [quizToDelete, setQuizToDelete] = useState<number | null>(null);
 
   // Fetch history from the backend
   useEffect(() => {
@@ -50,18 +51,22 @@ const History: React.FC<HistoryProps> = ({ refreshTrigger }) => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this quiz?')) {
-      return;
-    }
+  const verifyDelete = (id: number) => {
+    setQuizToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!quizToDelete) return;
 
     try {
-      await deleteQuiz(id);
-      setHistory(history.filter(item => item.id !== id));
+      await deleteQuiz(quizToDelete);
+      setHistory(history.filter(item => item.id !== quizToDelete));
       showToast('Quiz deleted successfully', 'success');
     } catch (err: any) {
       console.error('Error deleting quiz:', err);
       showToast('Failed to delete quiz: ' + err.message, 'error');
+    } finally {
+      setQuizToDelete(null);
     }
   };
 
@@ -187,7 +192,7 @@ const History: React.FC<HistoryProps> = ({ refreshTrigger }) => {
                         )}
                       </button>
                       <button
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => verifyDelete(item.id)}
                         className="w-10 h-10 flex items-center justify-center text-slate-300 hover:bg-red-50 hover:text-red-500 rounded-xl transition-all active:scale-95"
                         title="Delete record"
                       >
@@ -204,6 +209,37 @@ const History: React.FC<HistoryProps> = ({ refreshTrigger }) => {
 
       {selectedQuiz && (
         <QuizModal data={selectedQuiz} onClose={() => setSelectedQuiz(null)} />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {quizToDelete !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 text-red-500 mb-4">
+                <i className="fas fa-trash-alt text-2xl"></i>
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Delete Quiz?</h3>
+              <p className="text-slate-500">
+                Are you sure you want to delete this quiz? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setQuizToDelete(null)}
+                className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow-sm hover:shadow-md transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

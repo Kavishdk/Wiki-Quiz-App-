@@ -1,308 +1,291 @@
-# Deployment Guide - WikiQuiz AI
+# WikiQuiz AI - Deployment Guide
 
-This guide covers deploying the WikiQuiz AI application to production.
+## 📋 Prerequisites
 
-## Deployment Architecture
+- Python 3.8+
+- Node.js 16+
+- PostgreSQL 12+ (or SQLite for development)
+- Git
 
-```
-Frontend (Vercel) → Backend (Render) → Database (Render PostgreSQL)
-```
+## 🚀 Quick Start (Local Development)
 
----
+### 1. Clone the Repository
 
-## Part 1: Database Deployment (Render PostgreSQL)
-
-### 1. Create Render Account
-- Go to https://render.com
-- Sign up or log in with GitHub
-
-### 2. Create PostgreSQL Database
-
-1. Click **"New +"** → **"PostgreSQL"**
-2. Configure database:
-   - **Name**: `wikiquiz-db`
-   - **Database**: `wikiquiz`
-   - **User**: `wikiquiz_user` (auto-generated)
-   - **Region**: Choose closest to your users
-   - **Plan**: Free tier is sufficient for testing
-
-3. Click **"Create Database"**
-
-4. **Save connection details**:
-   - Internal Database URL (for backend)
-   - External Database URL (for local testing)
-
-   Example:
-   ```
-   Internal: postgresql://wikiquiz_user:xxx@dpg-xxx/wikiquiz
-   External: postgresql://wikiquiz_user:xxx@dpg-xxx.oregon-postgres.render.com/wikiquiz
-   ```
-
----
-
-## Part 2: Backend Deployment (Render Web Service)
-
-### 1. Prepare Repository
-
-Ensure your code is pushed to GitHub:
 ```bash
-git add .
-git commit -m "Prepare for deployment"
-git push origin main
+git clone https://github.com/YOUR_USERNAME/wikiquiz-ai.git
+cd wikiquiz-ai
 ```
 
-### 2. Create Web Service
+### 2. Backend Setup
 
-1. In Render Dashboard, click **"New +"** → **"Web Service"**
-2. Connect your GitHub repository
-3. Configure service:
+```bash
+cd backend
 
-   **Basic Settings:**
-   - **Name**: `wikiquiz-backend`
-   - **Region**: Same as database
-   - **Branch**: `main`
-   - **Root Directory**: `backend`
-   - **Runtime**: `Python 3`
+# Create virtual environment
+python -m venv venv
 
-   **Build & Deploy:**
-   - **Build Command**: 
-     ```bash
-     pip install -r requirements.txt
-     ```
-   
-   - **Start Command**:
-     ```bash
-     uvicorn main:app --host 0.0.0.0 --port $PORT
-     ```
+# Activate virtual environment
+# Windows:
+venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
 
-4. **Environment Variables** (click "Advanced"):
-   
-   Add these variables:
-   ```
-   DATABASE_URL=<your_internal_database_url_from_step_1>
-   GEMINI_API_KEY=<your_gemini_api_key>
-   CORS_ORIGINS=https://your-frontend-url.vercel.app,http://localhost:5173
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-   Note: You'll update `CORS_ORIGINS` after deploying frontend
+# Create .env file
+cp .env.example .env
 
-5. Click **"Create Web Service"**
+# Edit .env and add your credentials:
+# - GEMINI_API_KEY=your_api_key_here
+# - DATABASE_URL=postgresql://postgres:password@localhost:5432/wikiquiz
 
-6. Wait for deployment (5-10 minutes)
+# Initialize database
+python init_db.py
 
-7. **Initialize Database**:
-   - Go to your service's **"Shell"** tab
-   - Run: `python init_db.py`
+# Run backend server
+python -m uvicorn main:app --reload
+```
 
-8. **Test Backend**:
-   - Your backend URL: `https://wikiquiz-backend.onrender.com`
-   - Test: `https://wikiquiz-backend.onrender.com/`
-   - Should return: `{"message": "WikiQuiz AI API", ...}`
+Backend will run at `http://localhost:8000`
 
----
+### 3. Frontend Setup
 
-## Part 3: Frontend Deployment (Vercel)
+```bash
+cd ../frontend
 
-### Option A: Deploy via Vercel CLI
+# Install dependencies
+npm install
 
-1. **Install Vercel CLI**:
-   ```bash
-   npm install -g vercel
-   ```
+# Run frontend
+npm run dev
+```
 
-2. **Login to Vercel**:
-   ```bash
-   vercel login
-   ```
+Frontend will run at `http://localhost:3000`
 
-3. **Deploy**:
-   ```bash
-   # From project root
-   vercel --prod
-   ```
+## 🌐 Production Deployment
 
-4. **Configure during deployment**:
-   - Set up and deploy: `Y`
-   - Which scope: Choose your account
-   - Link to existing project: `N`
-   - Project name: `wikiquiz-ai`
-   - Directory: `./` (current directory)
-   - Override settings: `N`
+### Option 1: Deploy to Render (Recommended)
 
-5. **Set Environment Variable**:
-   ```bash
-   vercel env add VITE_API_URL production
-   # Enter: https://wikiquiz-backend.onrender.com
-   ```
+#### Backend Deployment
 
-6. **Redeploy**:
-   ```bash
-   vercel --prod
-   ```
-
-### Option B: Deploy via Vercel Dashboard
-
-1. Go to https://vercel.com/dashboard
-2. Click **"Add New..."** → **"Project"**
-3. Import your GitHub repository
+1. Create account at [render.com](https://render.com)
+2. Click "New +" → "Web Service"
+3. Connect your GitHub repository
 4. Configure:
-   - **Framework Preset**: Vite
-   - **Root Directory**: `./`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+   - **Name**: wikiquiz-backend
+   - **Environment**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Environment Variables**:
+     - `GEMINI_API_KEY`: Your Gemini API key
+     - `DATABASE_URL`: (Render will provide PostgreSQL URL)
+     - `CORS_ORIGINS`: Your frontend URL
 
-5. **Environment Variables**:
-   - Add: `VITE_API_URL` = `https://wikiquiz-backend.onrender.com`
+5. Add PostgreSQL database:
+   - Go to Dashboard → "New +" → "PostgreSQL"
+   - Copy the Internal Database URL
+   - Add it as `DATABASE_URL` environment variable
 
-6. Click **"Deploy"**
+#### Frontend Deployment
 
-7. **Get your URL**: `https://wikiquiz-ai.vercel.app`
+1. In Render, click "New +" → "Static Site"
+2. Connect your GitHub repository
+3. Configure:
+   - **Name**: wikiquiz-frontend
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
+   - **Environment Variables**:
+     - `VITE_API_URL`: Your backend URL (e.g., `https://wikiquiz-backend.onrender.com`)
 
----
+### Option 2: Deploy to Railway
 
-## Part 4: Final Configuration
+#### Backend
 
-### 1. Update Backend CORS
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
 
-Go back to Render backend service:
-1. Go to **"Environment"** tab
-2. Update `CORS_ORIGINS`:
-   ```
-   https://wikiquiz-ai.vercel.app,http://localhost:5173
-   ```
-3. Save changes (service will redeploy)
+# Login
+railway login
 
-### 2. Test Production Application
+# Initialize project
+cd backend
+railway init
 
-1. Visit your Vercel URL: `https://wikiquiz-ai.vercel.app`
-2. Generate a quiz
-3. Check history
-4. Verify all features work
+# Add PostgreSQL
+railway add
 
----
+# Deploy
+railway up
 
-## Part 5: Custom Domain (Optional)
-
-### Vercel Custom Domain
-
-1. In Vercel project settings → **"Domains"**
-2. Add your domain: `wikiquiz.yourdomain.com`
-3. Follow DNS configuration instructions
-4. Update backend CORS_ORIGINS with new domain
-
-### Render Custom Domain
-
-1. In Render service settings → **"Custom Domain"**
-2. Add: `api.wikiquiz.yourdomain.com`
-3. Configure DNS
-4. Update frontend `VITE_API_URL`
-
----
-
-## Monitoring & Maintenance
-
-### Render Dashboard
-- View logs: Service → **"Logs"** tab
-- Monitor usage: **"Metrics"** tab
-- Database backups: Database → **"Backups"**
-
-### Vercel Dashboard
-- View deployments: Project → **"Deployments"**
-- Analytics: **"Analytics"** tab
-- Logs: Deployment → **"Logs"**
-
----
-
-## Environment Variables Summary
-
-### Backend (Render)
-```env
-DATABASE_URL=postgresql://user:pass@host/db
-GEMINI_API_KEY=your_api_key
-CORS_ORIGINS=https://your-frontend.vercel.app
+# Set environment variables
+railway variables set GEMINI_API_KEY=your_key_here
+railway variables set CORS_ORIGINS=your_frontend_url
 ```
 
-### Frontend (Vercel)
-```env
-VITE_API_URL=https://your-backend.onrender.com
+#### Frontend
+
+```bash
+cd ../frontend
+railway init
+railway up
+railway variables set VITE_API_URL=your_backend_url
 ```
 
----
+### Option 3: Deploy to Vercel + Railway
 
-## Troubleshooting Deployment
+#### Backend (Railway)
 
-### Backend won't start
-- Check logs in Render dashboard
-- Verify all environment variables are set
-- Ensure `requirements.txt` is in `backend/` directory
-- Check start command uses `$PORT` variable
+Same as Option 2
 
-### Database connection fails
-- Verify DATABASE_URL is the **Internal** URL
-- Check database is in same region as backend
-- Ensure database is running (not suspended)
+#### Frontend (Vercel)
 
-### Frontend can't connect to backend
-- Check CORS_ORIGINS includes frontend URL
-- Verify VITE_API_URL is correct
-- Check backend is running and accessible
-- Look for CORS errors in browser console
+```bash
+# Install Vercel CLI
+npm install -g vercel
 
-### Free tier limitations
-- **Render Free**: 
-  - Services spin down after 15 min inactivity
-  - First request may be slow (cold start)
-  - 750 hours/month limit
-  
-- **Vercel Free**:
-  - 100 GB bandwidth/month
-  - Unlimited deployments
+# Deploy
+cd frontend
+vercel
 
----
+# Set environment variable
+vercel env add VITE_API_URL
+```
 
-## Production Checklist
+### Option 4: Docker Deployment
 
-- [ ] Database deployed and accessible
-- [ ] Backend deployed and running
-- [ ] Database initialized (`init_db.py` run)
-- [ ] Frontend deployed
-- [ ] Environment variables configured
-- [ ] CORS properly configured
-- [ ] Test quiz generation works
-- [ ] Test history feature works
-- [ ] All bonus features working
-- [ ] Screenshots taken
-- [ ] Screen recording created
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+```
 
----
+## 🔧 Environment Variables
 
-## Submission URLs
+### Backend (.env)
 
-After deployment, you'll have:
+```env
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+GEMINI_API_KEY=your_gemini_api_key
+CORS_ORIGINS=http://localhost:3000,https://your-frontend-url.com
+```
 
-1. **GitHub Repository**: `https://github.com/yourusername/wikiquiz-ai`
-2. **Frontend URL**: `https://wikiquiz-ai.vercel.app`
-3. **Backend URL**: `https://wikiquiz-backend.onrender.com`
-4. **API Docs**: `https://wikiquiz-backend.onrender.com/docs`
+### Frontend (.env.local)
 
----
+```env
+VITE_API_URL=http://localhost:8000
+```
 
-## Cost Optimization
+## 📊 Database Setup
 
-### Free Tier Usage
-- Both Render and Vercel offer generous free tiers
-- Sufficient for development and demonstration
-- No credit card required initially
+### PostgreSQL
 
-### Upgrade Considerations
-- Render Starter ($7/month): No spin-down, better performance
-- Vercel Pro ($20/month): More bandwidth, better analytics
-- Render PostgreSQL ($7/month): More storage, better performance
+```bash
+# Create database
+createdb wikiquiz
 
----
+# Or using psql
+psql -U postgres
+CREATE DATABASE wikiquiz;
+\q
 
-**Your WikiQuiz AI is now live! 🚀**
+# Run migrations
+python init_db.py
+```
 
-Share your deployed application:
-- Frontend: https://wikiquiz-ai.vercel.app
-- API Docs: https://wikiquiz-backend.onrender.com/docs
+### SQLite (Development Only)
+
+```env
+DATABASE_URL=sqlite:///./wikiquiz.db
+```
+
+## 🔐 Getting Gemini API Key
+
+1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Sign in with your Google account
+3. Click "Create API Key"
+4. Copy the key and add it to your `.env` file
+
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+cd backend
+python -m pytest
+```
+
+### Frontend Tests
+
+```bash
+cd frontend
+npm test
+```
+
+## 📝 Common Issues
+
+### Issue: Database Connection Failed
+
+**Solution**: Check your DATABASE_URL and ensure PostgreSQL is running
+
+```bash
+# Check PostgreSQL status
+# Windows:
+sc query postgresql
+
+# Linux:
+sudo systemctl status postgresql
+```
+
+### Issue: CORS Errors
+
+**Solution**: Update CORS_ORIGINS in backend .env to include your frontend URL
+
+### Issue: Gemini API 403 Error
+
+**Solution**: Your API key may be invalid or leaked. Get a new one from Google AI Studio
+
+### Issue: Port Already in Use
+
+**Solution**: Kill the process or use different ports
+
+```bash
+# Windows:
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+
+# Linux/Mac:
+lsof -ti:8000 | xargs kill -9
+```
+
+## 🎯 Performance Optimization
+
+### Backend
+
+- Use Gunicorn with multiple workers in production
+- Enable database connection pooling
+- Add Redis for caching
+
+### Frontend
+
+- Build for production: `npm run build`
+- Enable gzip compression
+- Use CDN for static assets
+
+## 📚 Additional Resources
+
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [React Documentation](https://react.dev/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Gemini API Documentation](https://ai.google.dev/docs)
+
+## 🆘 Support
+
+For issues and questions:
+- Open an issue on GitHub
+- Check existing issues for solutions
+- Review the documentation
+
+## 📄 License
+
+MIT License - See LICENSE file for details

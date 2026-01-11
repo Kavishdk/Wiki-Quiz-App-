@@ -12,6 +12,7 @@ import traceback
 
 from config import settings
 from database import engine, get_db, Base
+from google.api_core.exceptions import ResourceExhausted
 from models import Quiz
 from schemas import (
     QuizGenerateRequest,
@@ -49,7 +50,7 @@ app = FastAPI(
 # Setup CORS so frontend can talk to us
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -135,7 +136,7 @@ async def root():
         500: {"model": ErrorResponse, "description": "Server error"}
     }
 )
-async def generate_quiz(
+def generate_quiz(
     request: QuizGenerateRequest,
     db: Session = Depends(get_db)
 ):
@@ -166,9 +167,12 @@ async def generate_quiz(
     
     try:
         # Step 1: Grab the Wikipedia content
+        print(f"DEBUG: Processing URL: {url_str}", flush=True)
         logger.info(f"Starting to scrape: {url_str}")
         try:
+            print("DEBUG: Calling scrape_wikipedia...", flush=True)
             scraped_data = scrape_wikipedia(url_str)
+            print("DEBUG: Scrape successful!", flush=True)
         except ValueError as e:
             # Invalid URL format
             logger.warning(f"Invalid Wikipedia URL: {url_str} - {e}")
@@ -217,7 +221,14 @@ async def generate_quiz(
             logger.error(f"Failed to parse LLM response: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="AI failed to generate valid quiz. Please try again."
+                detail=f"AI failed to generate valid quiz: {str(e)}"
+            )
+        except ResourceExhausted as e:
+            # Handle Rate Limits cleanly
+            logger.warning(f"Gemini Request Limit Exceeded: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="AI Service Busy (Quota Exceeded). Please wait a minute and try again."
             )
         except Exception as e:
             # General LLM error
@@ -282,13 +293,15 @@ async def generate_quiz(
     response_model=List[QuizHistoryItem],
     status_code=status.HTTP_200_OK
 )
-async def get_history(db: Session = Depends(get_db)):
+def get_history(db: Session = Depends(get_db)):
     """
     Get all the quizzes we've generated so far.
     Returns them newest first.
     """
     try:
+        print("DEBUG: Fetching history...", flush=True)
         quizzes = db.query(Quiz).order_by(Quiz.created_at.desc()).all()
+        print(f"DEBUG: Found {len(quizzes)} quizzes", flush=True)
         logger.info(f"Retrieved {len(quizzes)} quizzes from history")
         return quizzes
     except SQLAlchemyError as e:
@@ -314,7 +327,7 @@ async def get_history(db: Session = Depends(get_db)):
         404: {"model": ErrorResponse, "description": "Quiz not found"}
     }
 )
-async def get_quiz(quiz_id: int, db: Session = Depends(get_db)):
+def get_quiz(quiz_id: int, db: Session = Depends(get_db)):
     """
     Get a specific quiz by its ID.
     Used when someone clicks "Details" in the history tab.
@@ -357,7 +370,7 @@ async def get_quiz(quiz_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/api/preview")
-async def preview_url(url: str):
+def preview_url(url: str):
     """
     Quick preview of a Wikipedia article - just grabs the title.
     Useful for showing users what they're about to generate a quiz for.
@@ -403,7 +416,7 @@ async def preview_url(url: str):
 
 
 @app.delete("/api/quiz/{quiz_id}")
-async def delete_quiz(quiz_id: int, db: Session = Depends(get_db)):
+def delete_quiz(quiz_id: int, db: Session = Depends(get_db)):
     """
     Delete a quiz - in case someone wants to clean up their history.
     """

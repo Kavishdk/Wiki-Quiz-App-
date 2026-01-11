@@ -18,6 +18,29 @@ ENV/
 *.sqlite
 *.sqlite3
 
+# Test and debug files
+test_*.py
+check_*.py
+debug_*.py
+verify_*.py
+fix_*.py
+update_*.py
+find_*.py
+switch_*.py
+inspect_*.py
+reproduce_*.py
+setup_wizard.py
+create_db_script.py
+read_env_raw.py
+*.log
+*.txt
+bad_response.txt
+best_model.txt
+working_model.txt
+available_models.txt
+models.txt
+db_*.log
+
 # IDE
 .vscode/
 .idea/
