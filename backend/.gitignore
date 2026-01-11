@@ -33,7 +33,6 @@ setup_wizard.py
 create_db_script.py
 read_env_raw.py
 *.log
-*.txt
 bad_response.txt
 best_model.txt
 working_model.txt
